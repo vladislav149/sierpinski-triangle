@@ -1,20 +1,25 @@
 <script setup lang="ts">
 import type {Point} from '@/types'
-import {computed} from 'vue'
+import {ref, computed} from 'vue'
 
 const props = defineProps<{
   points: Array<Point>
-  triangleTops: Array<Point>
+  figureTops: Array<Point>
+  maxFieldSize: number
 }>()
 
-const emit = defineEmits(['changePosition'])
+const emit = defineEmits<{
+  changePosition: [idx: number, divisionX: number, divisionY: number]
+}>()
+
+const refSvg = ref<SVGElement | null>(null)
 
 let idx: number
 let divX: number
 let divY: number
 
 const triangleTopsToString = computed(() =>
-  props.triangleTops.reduce((acc, cur) => (acc += `${cur.x},${cur.y} `), '')
+  props.figureTops.reduce((acc, cur) => (acc += `${cur.x},${cur.y} `), '')
 )
 
 function handleMouseDown(index: number, x: number, y: number, e: MouseEvent) {
@@ -38,17 +43,17 @@ function onMouseMove(e: MouseEvent) {
 <template>
   <svg
     class="border border-solid border-red-600"
-    width="500"
-    height="500"
-    viewBox="0 0 500 500"
+    :width="maxFieldSize"
+    :height="maxFieldSize"
     stroke="black"
+    ref="refSvg"
   >
     <polygon
       :points="triangleTopsToString"
       fill="transparent"
     />
     <circle
-      v-for="(point, index) in triangleTops"
+      v-for="(point, index) in figureTops"
       :key="index"
       :cx="point.x"
       :cy="point.y"

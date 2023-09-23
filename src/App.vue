@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import type {Point} from '@/types'
-import SerTriangle from '@/components/SerTriangle.vue'
+import SerFigure from '@/components/SerFigure.vue'
+import SerHeader from '@/components/SerHeader.vue'
+import SerFooter from '@/components/SerFooter.vue'
+import SerControlButtons from '@/components/control/SerControlButtons.vue'
 import {randomInteger} from '@/helpers'
 import {ref, computed, reactive, watch} from 'vue'
+const START_SPEED = -150
+const CORRECT_SPEED = 200
 
 let interval: ReturnType<typeof setInterval>
-const speedReal = ref(-150)
-const speed = computed(() => +speedReal.value + 200)
+const maxFieldSize = ref(500)
+const realSpeed = ref(START_SPEED)
+const speed = computed(() => realSpeed.value + CORRECT_SPEED)
 const isDisabledRange = ref(false)
-const isDisabledStart = computed(() => {
-  return (
-    isDisabledRange.value ||
-    coefficient.value <= 1 ||
-    triangleTops.value.length < 3
-  )
-})
 const countPoints = computed(() => points.length)
 const coefficient = ref(2)
-const triangleTops = ref<Array<Point>>([
+const figureTops = ref<Array<Point>>([
   {
     x: 250,
     y: 50
@@ -34,20 +33,20 @@ const triangleTops = ref<Array<Point>>([
 
 const points: Array<Point> = reactive([
   {
-    x: 300,
+    x: 270,
     y: 200
   }
 ])
 
 function addNewPoint() {
-  const number = randomInteger(0, triangleTops.value.length - 1)
+  const number = randomInteger(0, figureTops.value.length - 1)
   const lastPoint = points.at(-1)
   if (!lastPoint) return
   const x = Math.round(
-    (triangleTops.value[number].x + lastPoint.x) / coefficient.value
+    (figureTops.value[number].x + lastPoint.x) / coefficient.value
   )
   const y = Math.round(
-    (triangleTops.value[number].y + lastPoint.y) / coefficient.value
+    (figureTops.value[number].y + lastPoint.y) / coefficient.value
   )
   points.push({x, y})
 }
@@ -56,7 +55,7 @@ function startAddingNewPoints() {
   isDisabledRange.value = true
   interval = setInterval(() => {
     addNewPoint()
-  }, Math.abs(speedReal.value))
+  }, Math.abs(realSpeed.value))
 }
 
 function stopAddingNewPoints() {
@@ -70,110 +69,115 @@ function clearNewPoints() {
 
 function changePosition(index: number, positionX: number, positionY: number) {
   const isValid =
-    positionX > 0 && positionX < 500 && positionY > 0 && positionY < 500
+    positionX > 0 &&
+    positionX < maxFieldSize.value &&
+    positionY > 0 &&
+    positionY < maxFieldSize.value
 
   if (!isValid) return
+
   clearNewPoints()
-  triangleTops.value[index].x = positionX
-  triangleTops.value[index].y = positionY
+  figureTops.value[index].x = positionX
+  figureTops.value[index].y = positionY
 }
 
 function addTop() {
-  const x = randomInteger(0, 500)
-  const y = randomInteger(0, 500)
-  triangleTops.value.push({x, y})
+  const x = randomInteger(0, maxFieldSize.value)
+  const y = randomInteger(0, maxFieldSize.value)
+  figureTops.value.push({x, y})
 }
 
 function deleteTop() {
-  triangleTops.value.splice(-1)
+  figureTops.value.splice(-1)
 }
 
 watch(coefficient, () => clearNewPoints())
 watch(
-  () => triangleTops.value.length,
+  () => figureTops.value.length,
   () => {
     stopAddingNewPoints()
     clearNewPoints()
   }
 )
+
+watch(maxFieldSize, () => {
+  const maxValue = figureTops.value.reduce((acc, cur) => {
+    if (acc < cur.x) acc = cur.x
+    if (acc < cur.y) acc = cur.y
+    return acc
+  }, 0)
+  if (maxValue < maxFieldSize.value) return
+
+  figureTops.value = figureTops.value.map(top => ({
+    x: top.x < maxFieldSize.value ? top.x : maxFieldSize.value,
+    y: top.y < maxFieldSize.value ? top.y : maxFieldSize.value
+  }))
+})
+
+watch(figureTops, () => clearNewPoints())
 </script>
 
 <template>
   <div class="min-h-screen bg-slate-200 flex flex-col">
-    <header class="mb-10">
-      <h1 class="text-center text-3xl">Треугольник Серпинского</h1>
-      <a
-        class="block w-fit mx-auto text-blue-400"
-        href="https://www.youtube.com/watch?v=Nx3_nX8UoMo"
-        target="_blank"
-        >Подробнее тут</a
-      >
-    </header>
+    <SerHeader />
     <main class="container mx-auto px-3 grow">
-      количество итераций: {{ countPoints }}
-      <label class="block">
-        скорость
-        <input
-          class="cursor-pointer disabled:cursor-not-allowed"
-          type="range"
-          v-model="speedReal"
-          min="-190"
-          max="0"
-          :disabled="isDisabledRange"
-        />
-        {{ speed }}
-      </label>
-      <label>
-        коэффициент 1/
-        <input
-          class="w-10"
-          type="number"
-          v-model="coefficient"
-        />
-      </label>
-      <SerTriangle
+      <div class="flex justify-around">
+        <div>
+          <p class="mb-5">количество итераций: {{ countPoints }}</p>
+          <label class="block mb-5">
+            скорость
+            <input
+              class="cursor-pointer disabled:cursor-not-allowed"
+              type="range"
+              v-model.number="realSpeed"
+              min="-190"
+              max="0"
+              :disabled="isDisabledRange"
+            />
+            {{ speed }}
+          </label>
+          <label class="block mb-5">
+            коэффициент 1/
+            <input
+              class="w-10"
+              type="number"
+              v-model.number="coefficient"
+            />
+          </label>
+          <label>
+            размер поля
+            <input
+              class="cursor-pointer disabled:cursor-not-allowed"
+              type="range"
+              v-model.number="maxFieldSize"
+              min="300"
+              max="900"
+              :disabled="isDisabledRange"
+            />
+            {{ maxFieldSize }} x {{ maxFieldSize }}
+          </label>
+        </div>
+        <div>
+          <SerControlButtons
+            :is-disabled-range="isDisabledRange"
+            :coefficient="coefficient"
+            :figure-tops="figureTops"
+            @start-adding-new-points="startAddingNewPoints"
+            @stop-adding-new-points="stopAddingNewPoints"
+            @clear-new-points="clearNewPoints"
+            @add-top="addTop"
+            @delete-top="deleteTop"
+          />
+        </div>
+      </div>
+      <SerFigure
         class="mx-auto"
         :points="points"
-        :triangle-tops="triangleTops"
+        :figure-tops="figureTops"
+        :max-field-size="maxFieldSize"
         @changePosition="changePosition"
       />
-      <button
-        class="bg-teal-600 text-white px-5 py-10 disabled:cursor-not-allowed disabled:opacity-50 transition-opacity"
-        type="button"
-        @click="startAddingNewPoints"
-        :disabled="isDisabledStart"
-      >
-        Запустить
-      </button>
-      <button
-        class="bg-red-600 text-white px-5 py-10"
-        type="button"
-        @click="stopAddingNewPoints"
-      >
-        Стоп
-      </button>
-      <button
-        class="bg-yellow-600 text-white px-5 py-10"
-        type="button"
-        @click="clearNewPoints"
-      >
-        Очистить
-      </button>
-      <button
-        class="bg-green-600 text-white px-5 py-10"
-        type="button"
-        @click="addTop"
-      >
-        Добавить вершину
-      </button>
-      <button
-        class="bg-red-600 text-white px-5 py-10"
-        type="button"
-        @click="deleteTop"
-      >
-        Удалить вершину
-      </button>
     </main>
-    <footer></footer>
+    <SerFooter />
   </div>
 </template>
