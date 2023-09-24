@@ -9,6 +9,8 @@ import {ref, computed, reactive, watch} from 'vue'
 const START_SPEED = -150
 const CORRECT_SPEED = 200
 
+const refFigure = ref<InstanceType<typeof SerFigure> | null>(null)
+
 let interval: ReturnType<typeof setInterval>
 const maxFieldSize = ref(500)
 const realSpeed = ref(START_SPEED)
@@ -91,6 +93,10 @@ function deleteTop() {
   figureTops.value.splice(-1)
 }
 
+function downloadPNG() {
+  refFigure.value?.downloadPNG()
+}
+
 watch(coefficient, () => clearNewPoints())
 watch(
   () => figureTops.value.length,
@@ -167,15 +173,16 @@ watch(figureTops, () => clearNewPoints())
             @clear-new-points="clearNewPoints"
             @add-top="addTop"
             @delete-top="deleteTop"
+            @download-png="downloadPNG"
           />
         </div>
       </div>
       <SerFigure
-        class="mx-auto"
         :points="points"
         :figure-tops="figureTops"
         :max-field-size="maxFieldSize"
         @changePosition="changePosition"
+        ref="refFigure"
       />
     </main>
     <SerFooter />
